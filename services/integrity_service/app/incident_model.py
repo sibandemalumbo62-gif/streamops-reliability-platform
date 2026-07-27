@@ -44,3 +44,7 @@ class Incident(Base):
         DateTime,
         default=datetime.utcnow
     )
+    resolved_at = Column(
+    DateTime,
+    nullable=True
+)

@@ -5,7 +5,7 @@ from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from services.auth_service.app.db.base import Base
+from app.db.base import Base
 
 
 class User(Base):

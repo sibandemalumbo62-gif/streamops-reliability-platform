@@ -1,8 +1,11 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .database import get_db
 from .incident_model import Incident
+from .metrics import update_mttr
 
 
 router = APIRouter(
@@ -145,9 +148,13 @@ def update_incident(
 
     incident.status = status
 
+    if status == "RESOLVED":
+        incident.resolved_at = datetime.utcnow()
 
     db.commit()
 
+    if status == "RESOLVED":
+        update_mttr()
 
     db.refresh(incident)
 

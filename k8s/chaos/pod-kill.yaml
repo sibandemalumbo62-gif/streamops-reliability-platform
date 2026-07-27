@@ -1,0 +1,33 @@
+# Chaos Engineering: Pod Kill Experiment
+# This experiment randomly kills pods to test system resilience
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-kill-auth-service
+  namespace: streamops
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - streamops
+    labelSelectors:
+      app: auth-service
+  scheduler:
+    cron: "@every 5m"
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-kill-catalog-service
+  namespace: streamops
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - streamops
+    labelSelectors:
+      app: catalog-service
+  scheduler:
+    cron:"@every 10m"

@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: playback-service
+  namespace: streamops
+  labels:
+    app: playback-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: playback-service
+  template:
+    metadata:
+      labels:
+        app: playback-service
+    spec:
+      containers:
+      - name: playback-service
+        image: streamops/playback-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8003
+        env:
+        - name: DATABASE_URL
+          value: "postgresql://streamops:streamops_password@postgres-playback:5432/playback_db"
+        - name: REDIS_URL
+          value: "redis://redis:6379/0"
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: streamops-config
+              key: KAFKA_BOOTSTRAP_SERVERS
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8003
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: playback-service
+  namespace: streamops
+spec:
+  selector:
+    app: playback-service
+  ports:
+  - port: 8003
+    targetPort: 8003
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: playback-service-hpa
+  namespace: streamops
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: playback-service
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70

@@ -1,15 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
+from sqlalchemy import text
+from .metrics import events_received, events_rejected
 from .database import get_db
 from .models import Event
+
 from .schemas import EventCreate
 from .logger import logger
+from .metrics import events_received, events_rejected
 from .incident_model import Incident
 from .workers.tasks import create_incident_task
-
+from .services.reliability_service import update_reliability
 router = APIRouter(
-    prefix="/events",
+    
     tags=["Events"]
 )
 
@@ -108,7 +111,7 @@ integrity_engine = IntegrityEngine()
 # =====================================
 
 
-@router.post("/")
+@router.post("/events")
 def create_event(
 
     event: EventCreate,
@@ -121,7 +124,7 @@ def create_event(
     logger.info(
         f"Received event {event.event_id}"
     )
-
+    events_received.inc()
 
 
     # Check duplicate event
@@ -178,6 +181,8 @@ def create_event(
 
         event_status = "REJECTED"
 
+        events_rejected.inc()
+
         validation_error = ", ".join(
             validation["errors"]
         )
@@ -211,24 +216,23 @@ def create_event(
     db.commit()
 
     db.refresh(new_event)
+    update_reliability(
+    db,
+    new_event.service
+)
 
     incident_created = False
 
     if new_event.status == "REJECTED":
-
-
-        create_incident_task.delay(
-
-        service=new_event.service,
-
-        severity="HIGH",
-
-        message=new_event.validation_error
-
-    )
-
-
-    incident_created = False
+        try:
+            create_incident_task.delay(
+                service=new_event.service,
+                severity="HIGH",
+                message=new_event.validation_error
+            )
+        except Exception as e:
+            # Log error but don't fail the request
+            print(f"Failed to queue incident task: {e}")
 
 
 
@@ -241,27 +245,10 @@ def create_event(
     if new_event.status == "REJECTED":
 
 
-        incident = Incident(
+        
+            
 
-            service=new_event.service,
-
-            severity="MEDIUM",
-
-            message=new_event.validation_error,
-
-            status="OPEN"
-
-        )
-
-
-        db.add(incident)
-
-        db.commit()
-
-        db.refresh(incident)
-
-
-         = True
+        incident_created = True
 
 
 
@@ -273,44 +260,19 @@ def create_event(
 
 
 
-return {
-
-
-        "status":"success",
-
-
-        "message":"Event created successfully",
-
-
+    return {
+        "status": "success",
+        "message": "Event created successfully",
         "incident_created": incident_created,
-
-
-        "event":{
-
-
-            "id":new_event.id,
-
-
-            "event_id":new_event.event_id,
-
-
-            "event_type":new_event.event_type,
-
-
-            "user_id":new_event.user_id,
-
-
-            "service":new_event.service,
-
-
-            "timestamp":new_event.timestamp,
-
-
-            "status":new_event.status,
-
-
-            "validation_error":new_event.validation_error
-
+        "event": {
+            "id": new_event.id,
+            "event_id": new_event.event_id,
+            "event_type": new_event.event_type,
+            "user_id": new_event.user_id,
+            "service": new_event.service,
+            "timestamp": new_event.timestamp,
+            "status": new_event.status,
+            "validation_error": new_event.validation_error
         }
 
     }
@@ -324,7 +286,7 @@ return {
 # =====================================
 
 
-@router.get("/")
+@router.get("/events")
 def get_events(
 
     db: Session = Depends(get_db)
@@ -348,7 +310,7 @@ def get_events(
 # =====================================
 
 
-@router.get("/metrics")
+@router.get("/stats")
 def get_metrics(
 
     db:Session = Depends(get_db)
@@ -447,105 +409,27 @@ def get_metrics(
 
 @router.get("/health")
 def get_health(
-
-    service:str,
-
-    db:Session = Depends(get_db)
-
+    db: Session = Depends(get_db)
 ):
 
+    try:
+        # Check database connection
+        db.execute(text("SELECT 1"))
 
-    total_events = (
+        return {
+            "status": "healthy",
+            "service": "integrity-service",
+            "database": "connected"
+        }
 
-        db.query(Event)
+    except Exception as e:
 
-        .filter(
-            Event.service == service
-        )
-
-        .count()
-
-    )
-
-
-
-    rejected_events = (
-
-        db.query(Event)
-
-        .filter(
-
-            Event.service == service,
-
-            Event.status=="REJECTED"
-
-        )
-
-        .count()
-
-    )
-
-
-
-    if total_events == 0:
-
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="No events found for this service"
-
-        )
-
-
-
-    error_rate = (
-
-        rejected_events / total_events
-
-    ) * 100
-
-
-
-    if error_rate < 5:
-
-        health_status="HEALTHY"
-
-
-    elif error_rate < 20:
-
-        health_status="WARNING"
-
-
-    else:
-
-        health_status="CRITICAL"
-
-
-
-    return {
-
-
-        "service":service,
-
-
-        "total_events":total_events,
-
-
-        "rejected_events":rejected_events,
-
-
-        "error_rate":round(error_rate,2),
-
-
-        "health_status":health_status
-
-    }
-
-
-
-
-
+        return {
+            "status": "unhealthy",
+            "service": "integrity-service",
+            "database": "disconnected",
+            "error": str(e)
+        }
 # =====================================
 # FILTER EVENTS
 # =====================================
@@ -616,7 +500,7 @@ def filter_events(
 # =====================================
 
 
-@router.get("/{event_id}")
+@router.get("/events/{event_id}")
 def get_event(
 
     event_id:str,

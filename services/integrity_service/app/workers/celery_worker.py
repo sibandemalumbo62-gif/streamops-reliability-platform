@@ -4,7 +4,10 @@ from celery import Celery
 celery_app = Celery(
     "integrity_worker",
     broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0"
+    backend="redis://localhost:6379/0",
+    include=[
+        "services.integrity_service.app.workers.tasks"
+    ]
 )
 
 

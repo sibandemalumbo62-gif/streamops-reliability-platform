@@ -1,0 +1,77 @@
+# Pod Disruption Budgets for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth-service-pdb
+  namespace: streamops
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: auth-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: catalog-service-pdb
+  namespace: streamops
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: catalog-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: playback-service-pdb
+  namespace: streamops
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: playback-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: recommendation-service-pdb
+  namespace: streamops
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: recommendation-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: notification-service-pdb
+  namespace: streamops
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: notification-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: integrity-service-pdb
+  namespace: streamops
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: integrity-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway-pdb
+  namespace: streamops
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: gateway

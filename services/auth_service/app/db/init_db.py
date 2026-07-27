@@ -1,9 +1,9 @@
-from services.auth_service.app.db.base import Base
-from services.auth_service.app.db.session import engine
+from app.db.base import Base
+from app.db.session import engine
 
 # Import models so SQLAlchemy knows them
-from services.auth_service.app.models.user import User
-from . import integrity_models
+from app.models.user import User
+
 
 def init_db():
     Base.metadata.create_all(bind=engine)

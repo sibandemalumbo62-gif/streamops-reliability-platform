@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt
 from passlib.context import CryptContext
 
-from services.auth_service.app.core.config import settings
+from app.core.config import settings
 
 
 pwd_context = CryptContext(
