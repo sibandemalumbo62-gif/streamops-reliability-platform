@@ -1,0 +1,19 @@
+# Catalog Service Container Kill Experiment
+# This experiment kills the catalog service container to test
+# the system's ability to recover from service failures
+
+id: catalog-kill-test
+name: Catalog Service Kill
+description: Tests system resilience to catalog service container failure
+service: catalog
+
+phases:
+  - name: Container termination
+    failure: kill
+    auto_restart: true
+    description: Kill catalog container and auto-restart
+
+expected_impact:
+  availability: "90-95%"
+  recovery_time: "< 30s"
+  error_rate: "< 10%"

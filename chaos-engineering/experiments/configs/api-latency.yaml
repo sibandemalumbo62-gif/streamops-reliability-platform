@@ -1,0 +1,26 @@
+# API Service Latency Injection Experiment
+# This experiment injects artificial latency into the API service
+# to test the system's ability to handle delayed responses
+
+id: api-latency-test
+name: API Latency Injection
+description: Tests system resilience to increased latency in API service
+service: api
+
+phases:
+  - name: Initial latency injection
+    failure: latency
+    duration: 30
+    latency_ms: 5000
+    description: Inject 5 second latency for 30 seconds
+
+  - name: High latency stress test
+    failure: latency
+    duration: 15
+    latency_ms: 10000
+    description: Inject 10 second latency for 15 seconds
+
+expected_impact:
+  availability: "95-99%"
+  recovery_time: "< 60s"
+  error_rate: "< 5%"

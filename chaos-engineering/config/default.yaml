@@ -1,0 +1,65 @@
+# Default configuration for ChaosMonkey-Lite
+# Customize this file to match your services
+
+gateway_url: http://localhost:8000
+default_duration: 30
+default_latency: 5000
+auto_restart: true
+safety_checks: true
+max_duration: 300
+
+# Critical services that must always remain healthy
+critical_services:
+  - auth
+  - gateway
+
+metrics:
+  sample_interval: 2
+  recovery_timeout: 300
+
+logging:
+  level: INFO
+  file: chaos-monkey.log
+
+safety:
+  min_healthy_services: 2
+  max_error_rate: 70
+  max_latency_ms: 15000
+
+# Service Configuration
+# Customize these to match your Docker containers
+services:
+  # StreamOps services (currently running)
+  auth:
+    port: 8001
+    container: streamops-auth-service
+    database: streamops-auth-db
+  
+  catalog:
+    port: 8002
+    container: streamops-catalog-service
+    database: streamops-catalog-db
+  
+  playback:
+    port: 8003
+    container: streamops-playback-service
+    database: streamops-playback-db
+  
+  recommendation:
+    port: 8004
+    container: streamops-recommendation-service
+    database: streamops-recommendation-db
+  
+  notification:
+    port: 8005
+    container: streamops-notification-service
+    database: streamops-notification-db
+  
+  integrity:
+    port: 8006
+    container: streamops-integrity-service
+    database: streamops-integrity-db
+  
+  gateway:
+    port: 8000
+    container: streamops-gateway

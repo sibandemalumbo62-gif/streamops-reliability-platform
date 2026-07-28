@@ -1,0 +1,20 @@
+# Network Partition Experiment
+# This experiment creates a network partition between services
+# to test the system's ability to handle network failures
+
+id: network-partition-test
+name: Network Partition Test
+description: Tests system resilience to network partition between API and database service
+service: api
+
+phases:
+  - name: Network partition
+    failure: network-partition
+    target: backend
+    duration: 25
+    description: Partition network between API and backend for 25 seconds
+
+expected_impact:
+  availability: "85-95%"
+  recovery_time: "< 60s"
+  error_rate: "< 10%"

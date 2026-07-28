@@ -1,0 +1,19 @@
+# Web Service Container Kill Experiment
+# This experiment kills the web service container to test
+# the system's ability to recover from service failures
+
+id: web-kill-test
+name: Web Service Kill
+description: Tests system resilience to web service container failure
+service: web
+
+phases:
+  - name: Container termination
+    failure: kill
+    auto_restart: true
+    description: Kill web container and auto-restart
+
+expected_impact:
+  availability: "90-95%"
+  recovery_time: "< 30s"
+  error_rate: "< 10%"
