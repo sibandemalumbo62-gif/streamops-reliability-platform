@@ -13,7 +13,7 @@ export default function Navigation() {
   const navItems = [
     { path: '/dashboard', icon: Home, label: 'Dashboard' },
     { path: '/catalog', icon: Play, label: 'Catalog' },
-    { path: '/settings', icon: Settings, label: 'Settings' },
+    { path: '/monitoring', icon: Settings, label: 'Monitoring' },
   ];
 
   return (

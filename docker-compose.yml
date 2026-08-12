@@ -1,495 +1,133 @@
 services:
 
-  # =========================
-  # DATABASES
-  # =========================
+  # ============================================================
+  # POSTGRESQL DATABASE
+  # ============================================================
 
-  postgres-auth:
-    image: postgres:15-alpine
-    container_name: streamops-auth-db
+  postgres:
+    image: postgres:16
+    container_name: streamops-postgres
+    restart: unless-stopped
+
     environment:
-      POSTGRES_DB: auth_db
-      POSTGRES_USER: streamops
-      POSTGRES_PASSWORD: streamops_password
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: streamops
+
     ports:
       - "5432:5432"
+
     volumes:
-      - postgres-auth-data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
+
     networks:
       - streamops-network
 
 
-  postgres-catalog:
-    image: postgres:15-alpine
-    container_name: streamops-catalog-db
-    environment:
-      POSTGRES_DB: catalog_db
-      POSTGRES_USER: streamops
-      POSTGRES_PASSWORD: streamops_password
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres-catalog-data:/var/lib/postgresql/data
-    networks:
-      - streamops-network
+  # ============================================================
+  # STREAMOPS FASTAPI BACKEND
+  # ============================================================
 
-
-  postgres-playback:
-    image: postgres:15-alpine
-    container_name: streamops-playback-db
-    environment:
-      POSTGRES_DB: playback_db
-      POSTGRES_USER: streamops
-      POSTGRES_PASSWORD: streamops_password
-    ports:
-      - "5434:5432"
-    volumes:
-      - postgres-playback-data:/var/lib/postgresql/data
-    networks:
-      - streamops-network
-
-
-  postgres-recommendation:
-    image: postgres:15-alpine
-    container_name: streamops-recommendation-db
-    environment:
-      POSTGRES_DB: recommendation_db
-      POSTGRES_USER: streamops
-      POSTGRES_PASSWORD: streamops_password
-    ports:
-      - "5435:5432"
-    volumes:
-      - postgres-recommendation-data:/var/lib/postgresql/data
-    networks:
-      - streamops-network
-
-
-  postgres-notification:
-    image: postgres:15-alpine
-    container_name: streamops-notification-db
-    environment:
-      POSTGRES_DB: notification_db
-      POSTGRES_USER: streamops
-      POSTGRES_PASSWORD: streamops_password
-    ports:
-      - "5436:5432"
-    volumes:
-      - postgres-notification-data:/var/lib/postgresql/data
-    networks:
-      - streamops-network
-
-
-  postgres-integrity:
-    image: postgres:15-alpine
-    container_name: streamops-integrity-db
-    environment:
-      POSTGRES_DB: integrity_db
-      POSTGRES_USER: streamops
-      POSTGRES_PASSWORD: streamops_password
-    ports:
-      - "5437:5432"
-    volumes:
-      - postgres-integrity-data:/var/lib/postgresql/data
-    networks:
-      - streamops-network
-
-
-
-  # =========================
-  # REDIS
-  # =========================
-
-  redis:
-    image: redis:7-alpine
-    container_name: streamops-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - streamops-network
-
-
-
-  # =========================
-  # KAFKA
-  # =========================
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.5.0
-    container_name: streamops-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
-    volumes:
-      - zookeeper-data:/var/lib/zookeeper/data
-      - zookeeper-logs:/var/lib/zookeeper/log
-    networks:
-      - streamops-network
-
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: streamops-kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-      - "29092:29092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    volumes:
-      - kafka-data:/var/lib/kafka/data
-    networks:
-      - streamops-network
-
-  kafka-init:
-    image: confluentinc/cp-kafka:7.5.0
-    container_name: streamops-kafka-init
-    depends_on:
-      - kafka
-    entrypoint: ["/bin/sh", "-c"]
-    command: |
-      "
-      # Wait for Kafka to be ready
-      echo 'Waiting for Kafka to be ready...'
-      cub kafka-ready -b kafka:29092 1 30
-      
-      # Create topics
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic user-events --partitions 3 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic content-events --partitions 3 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic playback-events --partitions 3 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic recommendation-events --partitions 3 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic notification-events --partitions 3 --replication-factor 1
-      kafka-topics --bootstrap-server kafka:29092 --create --if-not-exists --topic integrity-events --partitions 3 --replication-factor 1
-      
-      echo 'Kafka topics created successfully'
-      "
-    networks:
-      - streamops-network
-
-
-
-  # =========================
-  # MONITORING
-  # =========================
-
-  prometheus:
-    image: prom/prometheus
-    container_name: streamops-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus:/etc/prometheus
-    networks:
-      - streamops-network
-
-
-  grafana:
-    image: grafana/grafana
-    container_name: streamops-grafana
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
-    networks:
-      - streamops-network
-
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    container_name: streamops-jaeger
-    ports:
-      - "16686:16686"
-      - "4317:4317"
-      - "4318:4318"
-    environment:
-      COLLECTOR_OTLP_ENABLED: "true"
-    networks:
-      - streamops-network
-  loki:
-    image: grafana/loki:latest
-    container_name: streamops-loki
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./monitoring/loki:/etc/loki
-    command: -config.file=/etc/loki/loki-config.yml
-    networks:
-      - streamops-network
-  promtail:
-    image: grafana/promtail:latest
-    container_name: streamops-promtail
-    volumes:
-      - ./monitoring/promtail:/etc/promtail
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: -config.file=/etc/promtail/promtail-config.yml
-    depends_on:
-      - loki
-    networks:
-      - streamops-network
-    # =========================
-  # API GATEWAY
-  # =========================
-
-  gateway:
-
+  backend:
     build:
-      context: ./gateway
+      context: ./backend
+      dockerfile: Dockerfile
 
-    container_name: streamops-gateway
+    container_name: streamops-backend
+    restart: unless-stopped
+
+    environment:
+      DATABASE_URL: postgresql://user:password@postgres:5432/streamops
 
     ports:
       - "8000:8000"
 
-    environment:
+    depends_on:
+      - postgres
 
-      AUTH_SERVICE_URL:
-        http://streamops-auth-service:8001
+    volumes:
+      - ./backend:/app
 
-      CATALOG_SERVICE_URL:
-        http://streamops-catalog-service:8002
+    networks:
+      - streamops-network
 
-      PLAYBACK_SERVICE_URL:
-        http://streamops-playback-service:8003
-
-      RECOMMENDATION_SERVICE_URL:
-        http://streamops-recommendation-service:8004
-
-      NOTIFICATION_SERVICE_URL:
-        http://streamops-notification-service:8002
-
-      INTEGRITY_SERVICE_URL:
-        http://streamops-integrity-service:8006
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
 
 
-      SECRET_KEY:
-        streamops-development-secret-key
+  # ============================================================
+  # PROMETHEUS
+  # ============================================================
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: streamops-prometheus
+    restart: unless-stopped
 
+    ports:
+      - "9090:9090"
 
-      ALGORITHM:
-        HS256
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
 
-
-      RATE_LIMIT_REQUESTS_PER_MINUTE:
-        100
-
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
     depends_on:
-      - auth-service
-      - catalog-service
-      - playback-service
-      - recommendation-service
-      - notification-service
-      - integrity-service
+      - backend
 
     networks:
       - streamops-network
 
 
+  # ============================================================
+  # GRAFANA
+  # ============================================================
 
-  # =========================
-  # AUTH SERVICE
-  # =========================
-
-  auth-service:
-
-    build:
-      context: ./services/auth_service
-
-    container_name: streamops-auth-service
+  grafana:
+    image: grafana/grafana:latest
+    container_name: streamops-grafana
+    restart: unless-stopped
 
     ports:
-      - "8001:8001"
+      - "3000:3000"
 
     environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
 
-      DATABASE_URL:
-        postgresql://streamops:streamops_password@postgres-auth:5432/auth_db
-
-      SECRET_KEY:
-        streamops-development-secret-key
-
-      ALGORITHM:
-        HS256
-
-      ACCESS_TOKEN_EXPIRE_MINUTES:
-        30
-
-      KAFKA_BOOTSTRAP_SERVERS:
-        kafka:29092
-
+    volumes:
+      - grafana_data:/var/lib/grafana
 
     depends_on:
-      - postgres-auth
-      - kafka
+      - prometheus
 
     networks:
       - streamops-network
 
 
-
-  # =========================
-  # OTHER SERVICES
-  # =========================
-
-  catalog-service:
-
-    build:
-      context: ./services/catalog_service
-
-    container_name: streamops-catalog-service
-
-    ports:
-      - "8002:8002"
-
-    environment:
-
-      DATABASE_URL:
-        postgresql://streamops:streamops_password@postgres-catalog:5432/catalog_db
-
-      KAFKA_BOOTSTRAP_SERVERS:
-        kafka:29092
-
-    networks:
-      - streamops-network
-
-
-
-  playback-service:
-
-    build:
-      context: ./services/playback_service
-
-    container_name: streamops-playback-service
-
-    ports:
-      - "8003:8003"
-
-    environment:
-
-      DATABASE_URL:
-        postgresql://streamops:streamops_password@postgres-playback:5432/playback_db
-
-      REDIS_URL:
-        redis://redis:6379/0
-
-      KAFKA_BOOTSTRAP_SERVERS:
-        kafka:29092
-
-    networks:
-      - streamops-network
-
-
-
-  recommendation-service:
-
-    build:
-      context: ./services/recommendation_service
-
-    container_name:
-      streamops-recommendation-service
-
-    ports:
-      - "8004:8004"
-
-    environment:
-
-      DATABASE_URL:
-        postgresql://streamops:streamops_password@postgres-recommendation:5432/recommendation_db
-
-      KAFKA_BOOTSTRAP_SERVERS:
-        kafka:29092
-
-    networks:
-      - streamops-network
-
-
-
-  notification-service:
-
-    build:
-      context: ./services/notification_service
-
-    container_name:
-      streamops-notification-service
-
-    ports:
-      - "8005:8005"
-
-    environment:
-
-      DATABASE_URL:
-        postgresql://streamops:streamops_password@postgres-notification:5432/notification_db
-
-      REDIS_URL:
-        redis://redis:6379/1
-
-      KAFKA_BOOTSTRAP_SERVERS:
-        kafka:29092
-
-    networks:
-      - streamops-network
-
-
-
-  integrity-service:
-
-    build:
-      context: ./services/integrity_service
-
-    container_name:
-      streamops-integrity-service
-
-    ports:
-      - "8006:8006"
-
-    environment:
-
-      DATABASE_URL:
-        postgresql://streamops:streamops_password@postgres-integrity:5432/integrity_db
-
-      REDIS_URL:
-        redis://redis:6379/2
-
-      KAFKA_BOOTSTRAP_SERVERS:
-        kafka:29092
-
-    networks:
-      - streamops-network
-
-
-
-# =========================
-# STORAGE
-# =========================
+# ==============================================================
+# VOLUMES
+# ==============================================================
 
 volumes:
 
-  postgres-auth-data:
-  postgres-catalog-data:
-  postgres-playback-data:
-  postgres-recommendation-data:
-  postgres-notification-data:
-  postgres-integrity-data:
-  redis-data:
-  zookeeper-data:
-  zookeeper-logs:
-  kafka-data:
+  postgres_data:
+
+  prometheus_data:
+
+  grafana_data:
 
 
-
-# =========================
+# ==============================================================
 # NETWORK
-# =========================
+# ==============================================================
 
 networks:
 

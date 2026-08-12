@@ -6,6 +6,7 @@ export default function Catalog() {
   const [content, setContent] = useState<Content[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     loadContent();
@@ -15,8 +16,35 @@ export default function Catalog() {
     try {
       const data = await catalogService.getAllContent();
       setContent(data);
-    } catch (error) {
+      setError('');
+    } catch (error: any) {
       console.error('Failed to load content:', error);
+      setError('Failed to load content. Backend may not be running.');
+      // Set mock data for demo
+      setContent([
+        {
+          id: '1',
+          title: 'Sample Video 1',
+          description: 'This is a sample video description for demo purposes.',
+          content_type: 'video',
+          genre: 'Drama',
+          duration: 3600,
+          release_date: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        {
+          id: '2',
+          title: 'Sample Video 2',
+          description: 'Another sample video for demonstration.',
+          content_type: 'video',
+          genre: 'Comedy',
+          duration: 2400,
+          release_date: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -27,8 +55,10 @@ export default function Catalog() {
       try {
         const data = await catalogService.searchContent(searchQuery);
         setContent(data);
-      } catch (error) {
+        setError('');
+      } catch (error: any) {
         console.error('Search failed:', error);
+        setError('Search failed. Using local data.');
       }
     } else {
       loadContent();
@@ -42,6 +72,12 @@ export default function Catalog() {
   return (
     <div className="p-8">
       <h1 className="text-3xl font-bold mb-6">Media Library</h1>
+      
+      {error && (
+        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-6">
+          {error}
+        </div>
+      )}
       
       <div className="flex gap-4 mb-6">
         <div className="flex-1 relative">

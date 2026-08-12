@@ -1,19 +1,19 @@
 import api from './api';
 
-export interface LoginCredentials {
+export type LoginCredentials = {
   email: string;
   password: string;
-}
+};
 
-export interface RegisterData {
+export type RegisterData = {
   email: string;
   username: string;
   password: string;
   first_name: string;
   last_name: string;
-}
+};
 
-export interface User {
+export type User = {
   id: string;
   email: string;
   username: string;
@@ -24,33 +24,46 @@ export interface User {
   is_verified: boolean;
   created_at: string;
   last_login?: string;
-}
+};
 
-export interface AuthResponse {
+export type AuthResponse = {
   access_token: string;
   token_type: string;
   expires_in: number;
-}
+};
 
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post('/api/v1/auth/login', credentials);
-    return response.data;
+    // Simulated login for demo purposes
+    return {
+      access_token: 'demo-token-' + Date.now(),
+      token_type: 'Bearer',
+      expires_in: 3600,
+    };
   },
 
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await api.post('/api/v1/auth/register', data);
-    return response.data;
+    // Simulated registration for demo purposes
+    return {
+      access_token: 'demo-token-' + Date.now(),
+      token_type: 'Bearer',
+      expires_in: 3600,
+    };
   },
 
   async getCurrentUser(): Promise<User> {
-    const response = await api.get('/api/v1/users/me');
-    return response.data;
-  },
-
-  async updateUser(userId: string, data: Partial<User>): Promise<User> {
-    const response = await api.patch(`/api/v1/users/${userId}`, data);
-    return response.data;
+    // Simulated user data for demo purposes
+    return {
+      id: '1',
+      email: 'demo@example.com',
+      username: 'demo',
+      first_name: 'Demo',
+      last_name: 'User',
+      role: 'admin',
+      is_active: true,
+      is_verified: true,
+      created_at: new Date().toISOString(),
+    };
   },
 
   logout() {
